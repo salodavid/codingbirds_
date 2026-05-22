@@ -1,7 +1,6 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../classes/db.php';
 require_once __DIR__ . '/../classes/resellers.php';
 require_once __DIR__ . '/../classes/accounts.php';
 

@@ -1,31 +1,35 @@
 <?php
 class Mobile {
-    private $db;
+    private $pdo;
 
     public function __construct() {
-        $this->db = DB::getInstance();
+        require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
+        $this->pdo = $pdo;
     }
 
     public function insert($data) {
-        $sql = "INSERT INTO TblMobile 
+        $sql = "INSERT INTO TblMobile
                 (msgId, transactionId, uid, msisdn, prefix, amount, debit,
                  rechargeType, pin, serial, balanceAfter, estado, fault, rawResponse, createdAt)
                 VALUES
                 (:msgId, :transactionId, :uid, :msisdn, :prefix, :amount, :debit,
                  :rechargeType, :pin, :serial, :balanceAfter, :estado, :fault, :rawResponse, NOW())";
-        return $this->db->prepare($sql)->execute($data);
+        return $this->pdo->prepare($sql)->execute($data);
     }
 
     public function findByTransactionId($transactionId) {
-        $stmt = $this->db->prepare("SELECT * FROM TblMobile WHERE transactionId = :transactionId LIMIT 1");
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM TblMobile WHERE transactionId = :transactionId LIMIT 1"
+        );
         $stmt->execute([':transactionId' => $transactionId]);
         return $stmt->fetch();
     }
 
-    public function checkMsisdnCooldown($msisdn, $seconds = 60) {
-        $stmt = $this->db->prepare(
-            "SELECT id FROM TblMobile WHERE msisdn = :msisdn 
-             AND createdAt >= NOW() - INTERVAL :seconds SECOND 
+    public function checkMsisdnCooldown($msisdn, $seconds) {
+        $stmt = $this->pdo->prepare(
+            "SELECT id FROM TblMobile
+             WHERE msisdn = :msisdn
+             AND createdAt >= NOW() - INTERVAL :seconds SECOND
              AND estado NOT IN (0, 5) LIMIT 1"
         );
         $stmt->execute([':msisdn' => $msisdn, ':seconds' => $seconds]);
@@ -33,13 +37,22 @@ class Mobile {
     }
 
     public function getByUid($uid, $dateFrom = null, $dateTo = null) {
-        $sql = "SELECT * FROM TblMobile WHERE uid = :uid";
+        $sql    = "SELECT * FROM TblMobile WHERE uid = :uid";
         $params = [':uid' => $uid];
         if ($dateFrom) { $sql .= " AND DATE(createdAt) >= :dateFrom"; $params[':dateFrom'] = $dateFrom; }
         if ($dateTo)   { $sql .= " AND DATE(createdAt) <= :dateTo";   $params[':dateTo']   = $dateTo;   }
         $sql .= " ORDER BY createdAt DESC";
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
+    }
+
+    public function getSummaryByDate($uid, $date) {
+        $stmt = $this->pdo->prepare(
+            "SELECT COUNT(*) as total, SUM(amount) as totalAmount, SUM(debit) as totalDebit
+             FROM TblMobile WHERE uid = :uid AND DATE(createdAt) = :date"
+        );
+        $stmt->execute([':uid' => $uid, ':date' => $date]);
+        return $stmt->fetch();
     }
 }

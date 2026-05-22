@@ -1,17 +1,13 @@
 <?php
+// Cron: 10 0 * * * php /path/to/cron/daily-report.php
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../classes/db.php';
-require_once __DIR__ . '/../classes/resellers.php';
 require_once __DIR__ . '/../classes/mobile.php';
 require_once __DIR__ . '/../classes/reports.php';
+require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
 
-// Run via cron at 00:10 every day
-// 10 0 * * * php /path/to/urafiki-pos/cron/daily-report.php
+$date = date('Y-m-d', strtotime('yesterday'));
 
-$date     = date('Y-m-d', strtotime('yesterday'));
-$db       = DB::getInstance();
-
-$stmt = $db->query("SELECT id, uid, name FROM TblResellers WHERE isActive = 1");
+$stmt      = $pdo->query("SELECT id, uid, name, email FROM TblResellers WHERE isActive = 1");
 $resellers = $stmt->fetchAll();
 
 foreach ($resellers as $reseller) {
@@ -20,19 +16,22 @@ foreach ($resellers as $reseller) {
 
     if (empty($transactions)) continue;
 
-    $accountName  = strtoupper(str_replace(' ', '_', $reseller['name']));
+    $accountName   = strtoupper(str_replace(' ', '_', $reseller['name']));
     $dateFormatted = str_replace('-', '', $date);
-    $folder       = REPORT_PATH . $accountName . '/' . date('Y', strtotime($date)) . '/' . date('m', strtotime($date)) . '/' . date('d', strtotime($date)) . '/';
+    $year          = date('Y', strtotime($date));
+    $month         = date('m', strtotime($date));
+    $day           = date('d', strtotime($date));
+    $folder        = REPORT_PATH . $accountName . '/' . $year . '/' . $month . '/' . $day . '/';
 
     if (!is_dir($folder)) mkdir($folder, 0755, true);
 
     $fileName = $accountName . '_' . $dateFormatted . '.pdf';
     $filePath = $folder . $fileName;
 
-    // TODO: Generate PDF using TCPDF/FPDF matching Transaction Summary format
-
     $totalAmount = array_sum(array_column($transactions, 'amount'));
     $totalDebit  = array_sum(array_column($transactions, 'debit'));
+
+    // TODO: Generate PDF using TCPDF matching Transaction Summary format
 
     $reports = new Reports();
     $reports->log([
@@ -43,6 +42,8 @@ foreach ($resellers as $reseller) {
         ':totalTransactions' => count($transactions),
         ':totalAmount'       => $totalAmount,
         ':totalDebit'        => $totalDebit,
-        ':sentTo'            => ''  // TODO: add email per reseller
+        ':sentTo'            => $reseller['email']
     ]);
 }
+
+echo "Daily report done for $date\n";

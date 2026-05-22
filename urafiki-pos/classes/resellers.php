@@ -1,14 +1,15 @@
 <?php
 class Resellers {
-    private $db;
+    private $pdo;
 
     public function __construct() {
-        $this->db = DB::getInstance();
+        require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
+        $this->pdo = $pdo;
     }
 
     public function authenticate($username, $password, $uid) {
-        $stmt = $this->db->prepare(
-            "SELECT * FROM TblResellers 
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM TblResellers
              WHERE username = :username AND uid = :uid AND isActive = 1 LIMIT 1"
         );
         $stmt->execute([':username' => $username, ':uid' => $uid]);
@@ -20,16 +21,28 @@ class Resellers {
     }
 
     public function validateIp($resellerId, $ip) {
-        $stmt = $this->db->prepare(
-            "SELECT id FROM TblResellerIps 
+        $stmt = $this->pdo->prepare(
+            "SELECT id FROM TblResellerIps
              WHERE resellerId = :resellerId AND ipAddress = :ip AND isActive = 1 LIMIT 1"
         );
         $stmt->execute([':resellerId' => $resellerId, ':ip' => $ip]);
         return $stmt->fetch();
     }
 
-    public function checkRateLimit($resellerId) {
-        $stmt = $this->db->prepare("SELECT * FROM TblRateLimits WHERE resellerId = :resellerId LIMIT 1");
+    public function getRateLimits($resellerId) {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM TblRateLimits WHERE resellerId = :resellerId LIMIT 1"
+        );
+        $stmt->execute([':resellerId' => $resellerId]);
+        return $stmt->fetch();
+    }
+
+    public function getSecurityRules($resellerId) {
+        $stmt = $this->pdo->prepare(
+            "SELECT * FROM TblSecurityRules
+             WHERE resellerId = :resellerId OR resellerId IS NULL
+             ORDER BY resellerId DESC LIMIT 1"
+        );
         $stmt->execute([':resellerId' => $resellerId]);
         return $stmt->fetch();
     }

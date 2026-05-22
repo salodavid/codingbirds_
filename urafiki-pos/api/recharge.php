@@ -1,7 +1,6 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../classes/db.php';
 require_once __DIR__ . '/../classes/resellers.php';
 require_once __DIR__ . '/../classes/accounts.php';
 require_once __DIR__ . '/../classes/mobile.php';
@@ -14,6 +13,11 @@ $uid           = $input['uid']           ?? '';
 $transactionId = $input['transactionId'] ?? '';
 $msisdn        = $input['msisdn']        ?? '';
 $amount        = $input['amount']        ?? 0;
+
+if (!$username || !$password || !$uid || !$transactionId || !$msisdn || !$amount) {
+    echo json_encode(['status' => 'error', 'estado' => 0, 'fault' => 0, 'message' => 'Missing required fields']);
+    exit;
+}
 
 $resellers = new Resellers();
 $reseller  = $resellers->authenticate($username, $password, $uid);
@@ -35,8 +39,11 @@ if ($existing) {
     exit;
 }
 
-if ($mobile->checkMsisdnCooldown($msisdn, MSISDN_COOLDOWN_SECONDS)) {
-    echo json_encode(['status' => 'rejected', 'estado' => 2, 'fault' => 2, 'message' => 'MSISDN recently recharged, please wait ' . MSISDN_COOLDOWN_SECONDS . ' seconds']);
+$rules    = $resellers->getSecurityRules($reseller['id']);
+$cooldown = $rules ? $rules['msisdnCooldownSeconds'] : MSISDN_COOLDOWN_SECONDS;
+
+if ($mobile->checkMsisdnCooldown($msisdn, $cooldown)) {
+    echo json_encode(['status' => 'rejected', 'estado' => 2, 'fault' => 2, 'message' => 'MSISDN recently recharged, please wait ' . $cooldown . ' seconds']);
     exit;
 }
 
@@ -47,19 +54,19 @@ if (!$balance || $balance['balance'] < $amount) {
     exit;
 }
 
-// TODO: Call TicTac API here and capture response
-$msgId       = date('YmdHis') . $uid . rand(1000, 9999);
-$estado      = 1;
-$fault       = 0;
+$prefix = substr($msisdn, 0, 2);
+
+// TODO: Call TicTac API here based on prefix
+$msgId        = date('YmdHis') . $uid . rand(1000, 9999);
+$estado       = 1;
+$fault        = 0;
 $rechargeType = 'direct';
-$pin         = null;
-$serial      = null;
-$rawResponse = [];
+$pin          = null;
+$serial       = null;
+$rawResponse  = [];
 
 $accounts->deduct($reseller['id'], $amount);
 $balanceAfter = $accounts->getBalanceAfterDeduct($reseller['id']);
-
-$prefix = substr($msisdn, 0, 2);
 
 $mobile->insert([
     ':msgId'         => $msgId,

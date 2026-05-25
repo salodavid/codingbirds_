@@ -17,7 +17,7 @@ if ($username === '' || $password === '') {
 }
 
 $db   = Connection::get();
-$stmt = $db->prepare("SELECT id, uid, name, email, password FROM TblResellers WHERE username = ? AND isActive = 1 LIMIT 1");
+$stmt = $db->prepare("SELECT id, uid, name, email, password FROM TblResellers WHERE username = ? AND isActive = 5 LIMIT 1");
 $stmt->bind_param('s', $username);
 $stmt->execute();
 $reseller = $stmt->get_result()->fetch_assoc();

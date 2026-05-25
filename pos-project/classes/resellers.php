@@ -9,7 +9,7 @@ class Resellers {
 
     public function authenticate($username, $password, $uid) {
         $stmt = $this->db->prepare(
-            "SELECT * FROM TblResellers WHERE username = ? AND uid = ? AND isActive = 1 LIMIT 1"
+            "SELECT * FROM TblResellers WHERE username = ? AND uid = ? AND isActive = 5 LIMIT 1"
         );
         $stmt->bind_param('ss', $username, $uid);
         $stmt->execute();
@@ -23,7 +23,7 @@ class Resellers {
 
     public function validateIp($resellerId, $ip) {
         $stmt = $this->db->prepare(
-            "SELECT id FROM TblResellerIps WHERE resellerId = ? AND ipAddress = ? AND isActive = 1 LIMIT 1"
+            "SELECT id FROM TblResellerIps WHERE resellerId = ? AND ipAddress = ? AND isActive = 5 LIMIT 1"
         );
         $stmt->bind_param('is', $resellerId, $ip);
         $stmt->execute();

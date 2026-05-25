@@ -8,7 +8,7 @@ require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
 $date = date('Y-m-d', strtotime('yesterday'));
 $db   = Connection::get();
 
-$result    = $db->query("SELECT id, uid, name, email FROM TblResellers WHERE isActive = 1");
+$result    = $db->query("SELECT id, uid, name, email FROM TblResellers WHERE isActive = 5");
 $resellers = $result->fetch_all(MYSQLI_ASSOC);
 
 foreach ($resellers as $reseller) {

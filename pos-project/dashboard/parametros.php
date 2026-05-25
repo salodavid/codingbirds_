@@ -46,7 +46,7 @@ $stmt->execute();
 $info = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
-$stmt = $db->prepare("SELECT ipAddress FROM TblResellerIps ti JOIN TblResellers r ON ti.resellerId = r.id WHERE r.uid = ? AND ti.isActive = 1");
+$stmt = $db->prepare("SELECT ipAddress FROM TblResellerIps ti JOIN TblResellers r ON ti.resellerId = r.id WHERE r.uid = ? AND ti.isActive = 5");
 $stmt->bind_param('s', $uid);
 $stmt->execute();
 $ips = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);

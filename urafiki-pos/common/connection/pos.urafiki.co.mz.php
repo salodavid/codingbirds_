@@ -1,24 +1,16 @@
 <?php
 class Connection {
-    private static $pdo = null;
+    private static $db = null;
 
     public static function get() {
-        if (self::$pdo === null) {
+        if (self::$db === null) {
             require_once __DIR__ . '/../../config/config.php';
-            try {
-                self::$pdo = new PDO(
-                    'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
-                    DB_USER,
-                    DB_PASS,
-                    [
-                        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-                    ]
-                );
-            } catch (PDOException $e) {
-                die(json_encode(['status' => 'error', 'message' => 'Connection failed: ' . $e->getMessage()]));
+            self::$db = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+            if (self::$db->connect_error) {
+                die(json_encode(['status' => 'error', 'message' => 'Connection failed: ' . self::$db->connect_error]));
             }
+            self::$db->set_charset('utf8mb4');
         }
-        return self::$pdo;
+        return self::$db;
     }
 }

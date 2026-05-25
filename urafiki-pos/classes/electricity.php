@@ -1,38 +1,52 @@
 <?php
 class Electricity {
-    private $pdo;
+    private $db;
 
     public function __construct() {
         require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
-        $this->pdo = Connection::get();
+        $this->db = Connection::get();
     }
 
     public function insert($data) {
-        $sql = "INSERT INTO TblElectricity
-                (msgId, transactionId, uid, meterNumber, amount, debit,
-                 token, serial, balanceAfter, estado, fault, rawResponse, createdAt)
-                VALUES
-                (:msgId, :transactionId, :uid, :meterNumber, :amount, :debit,
-                 :token, :serial, :balanceAfter, :estado, :fault, :rawResponse, NOW())";
-        return $this->pdo->prepare($sql)->execute($data);
+        $stmt = $this->db->prepare(
+            "INSERT INTO TblElectricity
+             (msgId, transactionId, uid, meterNumber, amount, debit,
+              token, serial, balanceAfter, estado, fault, rawResponse, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        );
+        $stmt->bind_param(
+            'ssssddssdiis',
+            $data['msgId'], $data['transactionId'], $data['uid'],
+            $data['meterNumber'], $data['amount'], $data['debit'],
+            $data['token'], $data['serial'], $data['balanceAfter'],
+            $data['estado'], $data['fault'], $data['rawResponse']
+        );
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 
     public function findByTransactionId($transactionId) {
-        $stmt = $this->pdo->prepare(
-            "SELECT * FROM TblElectricity WHERE transactionId = :transactionId LIMIT 1"
-        );
-        $stmt->execute([':transactionId' => $transactionId]);
-        return $stmt->fetch();
+        $stmt = $this->db->prepare("SELECT * FROM TblElectricity WHERE transactionId = ? LIMIT 1");
+        $stmt->bind_param('s', $transactionId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
     }
 
     public function getByUid($uid, $dateFrom = null, $dateTo = null) {
-        $sql    = "SELECT * FROM TblElectricity WHERE uid = :uid";
-        $params = [':uid' => $uid];
-        if ($dateFrom) { $sql .= " AND DATE(createdAt) >= :dateFrom"; $params[':dateFrom'] = $dateFrom; }
-        if ($dateTo)   { $sql .= " AND DATE(createdAt) <= :dateTo";   $params[':dateTo']   = $dateTo;   }
+        $sql    = "SELECT * FROM TblElectricity WHERE uid = ?";
+        $types  = 's';
+        $params = [$uid];
+        if ($dateFrom) { $sql .= " AND DATE(createdAt) >= ?"; $types .= 's'; $params[] = $dateFrom; }
+        if ($dateTo)   { $sql .= " AND DATE(createdAt) <= ?"; $types .= 's'; $params[] = $dateTo;   }
         $sql .= " ORDER BY createdAt DESC";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
     }
 }

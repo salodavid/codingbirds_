@@ -1,33 +1,44 @@
 <?php
 class Reports {
-    private $pdo;
+    private $db;
 
     public function __construct() {
         require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
-        $this->pdo = Connection::get();
+        $this->db = Connection::get();
     }
 
     public function log($data) {
-        $sql = "INSERT INTO TblReports
-                (uid, accountName, reportDate, filePath, totalTransactions, totalAmount, totalDebit, sentTo, sentAt, createdAt)
-                VALUES
-                (:uid, :accountName, :reportDate, :filePath, :totalTransactions, :totalAmount, :totalDebit, :sentTo, NOW(), NOW())";
-        return $this->pdo->prepare($sql)->execute($data);
+        $stmt = $this->db->prepare(
+            "INSERT INTO TblReports
+             (uid, accountName, reportDate, filePath, totalTransactions, totalAmount, totalDebit, sentTo, sentAt, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())"
+        );
+        $stmt->bind_param(
+            'ssssiids',
+            $data['uid'], $data['accountName'], $data['reportDate'],
+            $data['filePath'], $data['totalTransactions'],
+            $data['totalAmount'], $data['totalDebit'], $data['sentTo']
+        );
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 
     public function getByUid($uid) {
-        $stmt = $this->pdo->prepare(
-            "SELECT * FROM TblReports WHERE uid = :uid ORDER BY reportDate DESC"
-        );
-        $stmt->execute([':uid' => $uid]);
-        return $stmt->fetchAll();
+        $stmt = $this->db->prepare("SELECT * FROM TblReports WHERE uid = ? ORDER BY reportDate DESC");
+        $stmt->bind_param('s', $uid);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
     }
 
     public function getByDate($uid, $date) {
-        $stmt = $this->pdo->prepare(
-            "SELECT * FROM TblReports WHERE uid = :uid AND reportDate = :date LIMIT 1"
-        );
-        $stmt->execute([':uid' => $uid, ':date' => $date]);
-        return $stmt->fetch();
+        $stmt = $this->db->prepare("SELECT * FROM TblReports WHERE uid = ? AND reportDate = ? LIMIT 1");
+        $stmt->bind_param('ss', $uid, $date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
     }
 }

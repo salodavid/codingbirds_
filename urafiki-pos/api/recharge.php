@@ -63,26 +63,26 @@ $fault        = 0;
 $rechargeType = 'direct';
 $pin          = null;
 $serial       = null;
-$rawResponse  = [];
+$rawResponse  = '{}';
 
 $accounts->deduct($reseller['id'], $amount);
 $balanceAfter = $accounts->getBalanceAfterDeduct($reseller['id']);
 
 $mobile->insert([
-    ':msgId'         => $msgId,
-    ':transactionId' => $transactionId,
-    ':uid'           => $uid,
-    ':msisdn'        => $msisdn,
-    ':prefix'        => $prefix,
-    ':amount'        => $amount,
-    ':debit'         => $amount,
-    ':rechargeType'  => $rechargeType,
-    ':pin'           => $pin,
-    ':serial'        => $serial,
-    ':balanceAfter'  => $balanceAfter,
-    ':estado'        => $estado,
-    ':fault'         => $fault,
-    ':rawResponse'   => json_encode($rawResponse)
+    'msgId'         => $msgId,
+    'transactionId' => $transactionId,
+    'uid'           => $uid,
+    'msisdn'        => $msisdn,
+    'prefix'        => $prefix,
+    'amount'        => $amount,
+    'debit'         => $amount,
+    'rechargeType'  => $rechargeType,
+    'pin'           => $pin,
+    'serial'        => $serial,
+    'balanceAfter'  => $balanceAfter,
+    'estado'        => $estado,
+    'fault'         => $fault,
+    'rawResponse'   => $rawResponse
 ]);
 
 echo json_encode([

@@ -1,59 +1,79 @@
 <?php
 class Mobile {
-    private $pdo;
+    private $db;
 
     public function __construct() {
         require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
-        $this->pdo = Connection::get();
+        $this->db = Connection::get();
     }
 
     public function insert($data) {
-        $sql = "INSERT INTO TblMobile
-                (msgId, transactionId, uid, msisdn, prefix, amount, debit,
-                 rechargeType, pin, serial, balanceAfter, estado, fault, rawResponse, createdAt)
-                VALUES
-                (:msgId, :transactionId, :uid, :msisdn, :prefix, :amount, :debit,
-                 :rechargeType, :pin, :serial, :balanceAfter, :estado, :fault, :rawResponse, NOW())";
-        return $this->pdo->prepare($sql)->execute($data);
+        $stmt = $this->db->prepare(
+            "INSERT INTO TblMobile
+             (msgId, transactionId, uid, msisdn, prefix, amount, debit,
+              rechargeType, pin, serial, balanceAfter, estado, fault, rawResponse, createdAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())"
+        );
+        $stmt->bind_param(
+            'sssssddsssdii s',
+            $data['msgId'], $data['transactionId'], $data['uid'],
+            $data['msisdn'], $data['prefix'], $data['amount'], $data['debit'],
+            $data['rechargeType'], $data['pin'], $data['serial'],
+            $data['balanceAfter'], $data['estado'], $data['fault'], $data['rawResponse']
+        );
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
     }
 
     public function findByTransactionId($transactionId) {
-        $stmt = $this->pdo->prepare(
-            "SELECT * FROM TblMobile WHERE transactionId = :transactionId LIMIT 1"
-        );
-        $stmt->execute([':transactionId' => $transactionId]);
-        return $stmt->fetch();
+        $stmt = $this->db->prepare("SELECT * FROM TblMobile WHERE transactionId = ? LIMIT 1");
+        $stmt->bind_param('s', $transactionId);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
     }
 
     public function checkMsisdnCooldown($msisdn, $seconds) {
         $seconds = (int)$seconds;
-        $stmt    = $this->pdo->prepare(
+        $stmt    = $this->db->prepare(
             "SELECT id FROM TblMobile
-             WHERE msisdn = :msisdn
+             WHERE msisdn = ?
              AND createdAt >= NOW() - INTERVAL $seconds SECOND
              AND estado NOT IN (0, 5) LIMIT 1"
         );
-        $stmt->execute([':msisdn' => $msisdn]);
-        return $stmt->fetch();
+        $stmt->bind_param('s', $msisdn);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
     }
 
     public function getByUid($uid, $dateFrom = null, $dateTo = null) {
-        $sql    = "SELECT * FROM TblMobile WHERE uid = :uid";
-        $params = [':uid' => $uid];
-        if ($dateFrom) { $sql .= " AND DATE(createdAt) >= :dateFrom"; $params[':dateFrom'] = $dateFrom; }
-        if ($dateTo)   { $sql .= " AND DATE(createdAt) <= :dateTo";   $params[':dateTo']   = $dateTo;   }
+        $sql    = "SELECT * FROM TblMobile WHERE uid = ?";
+        $types  = 's';
+        $params = [$uid];
+        if ($dateFrom) { $sql .= " AND DATE(createdAt) >= ?"; $types .= 's'; $params[] = $dateFrom; }
+        if ($dateTo)   { $sql .= " AND DATE(createdAt) <= ?"; $types .= 's'; $params[] = $dateTo;   }
         $sql .= " ORDER BY createdAt DESC";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->fetchAll();
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $result;
     }
 
     public function getSummaryByDate($uid, $date) {
-        $stmt = $this->pdo->prepare(
+        $stmt = $this->db->prepare(
             "SELECT COUNT(*) as total, SUM(amount) as totalAmount, SUM(debit) as totalDebit
-             FROM TblMobile WHERE uid = :uid AND DATE(createdAt) = :date"
+             FROM TblMobile WHERE uid = ? AND DATE(createdAt) = ?"
         );
-        $stmt->execute([':uid' => $uid, ':date' => $date]);
-        return $stmt->fetch();
+        $stmt->bind_param('ss', $uid, $date);
+        $stmt->execute();
+        $result = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return $result;
     }
 }

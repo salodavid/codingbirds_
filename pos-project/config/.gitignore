@@ -1,0 +1,2 @@
+# Ignore local config — fill in credentials on each server
+config.php

@@ -4,7 +4,7 @@ class Accounts {
 
     public function __construct() {
         require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
-        $this->pdo = $pdo;
+        $this->pdo = Connection::get();
     }
 
     public function getBalance($resellerId) {

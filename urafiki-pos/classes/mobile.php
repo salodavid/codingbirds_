@@ -4,7 +4,7 @@ class Mobile {
 
     public function __construct() {
         require_once __DIR__ . '/../common/connection/pos.urafiki.co.mz.php';
-        $this->pdo = $pdo;
+        $this->pdo = Connection::get();
     }
 
     public function insert($data) {
@@ -26,13 +26,14 @@ class Mobile {
     }
 
     public function checkMsisdnCooldown($msisdn, $seconds) {
-        $stmt = $this->pdo->prepare(
+        $seconds = (int)$seconds;
+        $stmt    = $this->pdo->prepare(
             "SELECT id FROM TblMobile
              WHERE msisdn = :msisdn
-             AND createdAt >= NOW() - INTERVAL :seconds SECOND
+             AND createdAt >= NOW() - INTERVAL $seconds SECOND
              AND estado NOT IN (0, 5) LIMIT 1"
         );
-        $stmt->execute([':msisdn' => $msisdn, ':seconds' => $seconds]);
+        $stmt->execute([':msisdn' => $msisdn]);
         return $stmt->fetch();
     }
 

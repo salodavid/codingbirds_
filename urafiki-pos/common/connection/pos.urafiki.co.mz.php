@@ -1,16 +1,24 @@
 <?php
-require_once __DIR__ . '/../../config/config.php';
+class Connection {
+    private static $pdo = null;
 
-try {
-    $pdo = new PDO(
-        'mysql:host=' . DB_HOST . ';dbname=`' . DB_NAME . '`;charset=utf8mb4',
-        DB_USER,
-        DB_PASS,
-        [
-            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
-        ]
-    );
-} catch (PDOException $e) {
-    die(json_encode(['status' => 'error', 'message' => 'Connection failed: ' . $e->getMessage()]));
+    public static function get() {
+        if (self::$pdo === null) {
+            require_once __DIR__ . '/../../config/config.php';
+            try {
+                self::$pdo = new PDO(
+                    'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+                    DB_USER,
+                    DB_PASS,
+                    [
+                        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                    ]
+                );
+            } catch (PDOException $e) {
+                die(json_encode(['status' => 'error', 'message' => 'Connection failed: ' . $e->getMessage()]));
+            }
+        }
+        return self::$pdo;
+    }
 }

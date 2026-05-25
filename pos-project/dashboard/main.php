@@ -1,175 +1,183 @@
 <?php
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/common/session/session.php';
-require_once __DIR__ . '/code/summary.php';
+ob_start();
+session_start();
+if (empty($_SESSION['reseller'])) { header('Location: index.php'); exit; }
+require_once __DIR__ . '/common/connection/pos.urafiki.co.mz.php';
 
-$pageTitle = 'Painel Principal';
-$today     = date('Y-m-d');
-$uid       = $sessionReseller['uid'];
-$summary   = getDashboardSummary($uid, $today);
-$recent    = getRecentMobile($uid, 10);
+$db = Connection::get();
+$resellerId = $_SESSION['reseller']['id'];
 
-$estadoLabel = fn($e) => match((int)$e) {
-    1       => '<span class="badge badge-sm bg-gradient-success">Sucesso</span>',
-    0       => '<span class="badge badge-sm bg-gradient-secondary">Pendente</span>',
-    5       => '<span class="badge badge-sm bg-gradient-warning">Duplicado</span>',
-    default => '<span class="badge badge-sm bg-gradient-danger">Erro</span>',
-};
+// Fetch account balance
+$stmt = $db->prepare("SELECT balance, creditLimit FROM TblAccounts WHERE resellerId = ? LIMIT 1");
+$stmt->bind_param('i', $resellerId);
+$stmt->execute();
+$account = $stmt->get_result()->fetch_assoc();
+$stmt->close();
+
+$balance     = $account['balance']     ?? 0;
+$creditLimit = $account['creditLimit'] ?? 0;
+
+// Count today's transactions
+$stmt = $db->prepare("SELECT COUNT(*) as total, COALESCE(SUM(amount),0) as soma FROM TblTransactions WHERE resellerId = ? AND DATE(createdAt) = CURDATE()");
+$stmt->bind_param('i', $resellerId);
+$stmt->execute();
+$today = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 ?>
 <!DOCTYPE html>
 <html lang="pt">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <title>POS Urafiki — <?= $pageTitle ?></title>
-  <link rel="icon" type="image/png" href="assets/img/logos/urafiki-icon.png">
-  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600,700" rel="stylesheet">
-  <link href="assets/css/nucleo-icons.css" rel="stylesheet">
-  <link href="assets/css/nucleo-svg.css" rel="stylesheet">
-  <link href="assets/css/soft-ui-dashboard.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POS Urafiki &mdash; Dashboard</title>
+  <!-- Tabler icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+  <!-- Custom theme -->
+  <link rel="stylesheet" href="assets/css/main.css">
+  <style>
+    body { background-color: #f4f6f9; }
+    .sidebar { z-index: 1030; }
+    .card-stat { border: none; border-radius: .75rem; }
+    .card-stat .card-body { padding: 1.25rem 1.5rem; }
+    .card-stat .stat-icon { width: 52px; height: 52px; border-radius: .5rem;
+      display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .nav-link { border-radius: .375rem; color: #495057; font-size: .875rem; padding: .45rem .75rem; }
+    .nav-link:hover, .nav-link.active { background-color: #e8f4ff; color: #0d6efd; }
+    .nav-link.active { font-weight: 600; }
+  </style>
 </head>
-<body class="g-sidenav-show bg-gray-100">
-<?php include __DIR__ . '/menu/menu.php'; ?>
-<main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
-<?php include __DIR__ . '/menu/search.php'; ?>
-<div class="container-fluid py-4">
+<body>
 
-  <!-- KPI Cards -->
-  <div class="row">
-    <div class="col-xl-3 col-sm-6 mb-4">
-      <div class="card">
-        <div class="card-header p-3 pt-2">
-          <div class="icon icon-lg icon-shape bg-gradient-info shadow-dark text-center border-radius-xl mt-n4 position-absolute">
-            <i class="material-icons opacity-10">account_balance_wallet</i>
+<div class="d-flex">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <?php require_once __DIR__ . '/common/partials/sidebar.php'; ?>
+
+  <!-- ==================== PAGE WRAPPER ==================== -->
+  <div class="flex-grow-1 d-flex flex-column" style="min-width:0;">
+
+    <!-- ==================== TOPBAR ==================== -->
+    <?php require_once __DIR__ . '/common/partials/topbar.php'; ?>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main id="content" class="content py-4 px-3 px-md-4 flex-grow-1">
+      <div class="container-fluid">
+
+        <!-- Page heading -->
+        <div class="mb-4">
+          <h5 class="fw-bold mb-0">Painel Principal</h5>
+          <p class="text-muted mb-0" style="font-size:.85rem;">
+            Bem-vindo, <strong><?= htmlspecialchars($_SESSION['reseller']['name']) ?></strong> &mdash;
+            <?= date('d/m/Y') ?>
+          </p>
+        </div>
+
+        <!-- ===== KPI STAT CARDS ===== -->
+        <div class="row g-3 mb-4">
+
+          <!-- Saldo Disponível -->
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-stat shadow-sm">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                  <i class="ti ti-wallet"></i>
+                </div>
+                <div>
+                  <p class="text-muted mb-0" style="font-size:.75rem;">Saldo Disponível</p>
+                  <h5 class="fw-bold mb-0"><?= number_format($balance, 2, ',', '.') ?> MT</h5>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="text-end pt-1">
-            <p class="text-sm mb-0 text-capitalize">Saldo Disponível</p>
-            <h4 class="mb-0"><?= number_format($summary['balance'], 2) ?> MT</h4>
+
+          <!-- Limite de Crédito -->
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-stat shadow-sm">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                  <i class="ti ti-credit-card"></i>
+                </div>
+                <div>
+                  <p class="text-muted mb-0" style="font-size:.75rem;">Limite de Crédito</p>
+                  <h5 class="fw-bold mb-0"><?= number_format($creditLimit, 2, ',', '.') ?> MT</h5>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Carregamentos Hoje -->
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-stat shadow-sm">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-info bg-opacity-10 text-info">
+                  <i class="ti ti-battery-charging"></i>
+                </div>
+                <div>
+                  <p class="text-muted mb-0" style="font-size:.75rem;">Carregamentos Hoje</p>
+                  <h5 class="fw-bold mb-0"><?= (int)($today['total'] ?? 0) ?></h5>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Volume Hoje -->
+          <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card card-stat shadow-sm">
+              <div class="card-body d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                  <i class="ti ti-coins"></i>
+                </div>
+                <div>
+                  <p class="text-muted mb-0" style="font-size:.75rem;">Volume Hoje</p>
+                  <h5 class="fw-bold mb-0"><?= number_format($today['soma'] ?? 0, 2, ',', '.') ?> MT</h5>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <!-- /KPI STAT CARDS -->
+
+        <!-- ===== QUICK ACTIONS ===== -->
+        <div class="row g-3 mb-4">
+          <div class="col-12">
+            <div class="card shadow-sm border-0 rounded-3">
+              <div class="card-body">
+                <h6 class="fw-semibold mb-3">Acções Rápidas</h6>
+                <div class="d-flex flex-wrap gap-2">
+                  <a href="carregamento.php" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1">
+                    <i class="ti ti-battery-charging"></i> Novo Carregamento
+                  </a>
+                  <a href="relatorios.php" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-1">
+                    <i class="ti ti-receipt"></i> Ver Relatórios
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <hr class="dark horizontal my-0">
-        <div class="card-footer p-3">
-          <p class="mb-0"><span class="text-success text-sm font-weight-bolder">Conta activa</span></p>
-        </div>
+        <!-- /QUICK ACTIONS -->
+
       </div>
-    </div>
-    <div class="col-xl-3 col-sm-6 mb-4">
-      <div class="card">
-        <div class="card-header p-3 pt-2">
-          <div class="icon icon-lg icon-shape bg-gradient-success shadow-success text-center border-radius-xl mt-n4 position-absolute">
-            <i class="material-icons opacity-10">phone_android</i>
-          </div>
-          <div class="text-end pt-1">
-            <p class="text-sm mb-0 text-capitalize">Mobile Hoje</p>
-            <h4 class="mb-0"><?= $summary['mobile']['total'] ?> transacções</h4>
-          </div>
-        </div>
-        <hr class="dark horizontal my-0">
-        <div class="card-footer p-3">
-          <p class="mb-0 text-sm">Débito: <span class="font-weight-bolder"><?= number_format($summary['mobile']['totalDebit'], 2) ?> MT</span></p>
-        </div>
-      </div>
-    </div>
-    <div class="col-xl-3 col-sm-6 mb-4">
-      <div class="card">
-        <div class="card-header p-3 pt-2">
-          <div class="icon icon-lg icon-shape bg-gradient-warning shadow-warning text-center border-radius-xl mt-n4 position-absolute">
-            <i class="material-icons opacity-10">tv</i>
-          </div>
-          <div class="text-end pt-1">
-            <p class="text-sm mb-0 text-capitalize">TV Hoje</p>
-            <h4 class="mb-0"><?= $summary['tv']['total'] ?> transacções</h4>
-          </div>
-        </div>
-        <hr class="dark horizontal my-0">
-        <div class="card-footer p-3">
-          <p class="mb-0 text-sm">Débito: <span class="font-weight-bolder"><?= number_format($summary['tv']['totalDebit'], 2) ?> MT</span></p>
-        </div>
-      </div>
-    </div>
-    <div class="col-xl-3 col-sm-6 mb-4">
-      <div class="card">
-        <div class="card-header p-3 pt-2">
-          <div class="icon icon-lg icon-shape bg-gradient-danger shadow-danger text-center border-radius-xl mt-n4 position-absolute">
-            <i class="material-icons opacity-10">bolt</i>
-          </div>
-          <div class="text-end pt-1">
-            <p class="text-sm mb-0 text-capitalize">Electricidade Hoje</p>
-            <h4 class="mb-0"><?= $summary['elec']['total'] ?> transacções</h4>
-          </div>
-        </div>
-        <hr class="dark horizontal my-0">
-        <div class="card-footer p-3">
-          <p class="mb-0 text-sm">Débito: <span class="font-weight-bolder"><?= number_format($summary['elec']['totalDebit'], 2) ?> MT</span></p>
-        </div>
-      </div>
-    </div>
+    </main>
+    <!-- /MAIN CONTENT -->
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="border-top bg-white py-3 px-4 text-center">
+      <small class="text-muted">&copy; <?= date('Y') ?> Urafiki Lda</small>
+    </footer>
+
   </div>
+  <!-- /PAGE WRAPPER -->
 
-  <!-- Recent Mobile Transactions -->
-  <div class="row mt-4">
-    <div class="col-12">
-      <div class="card mb-4">
-        <div class="card-header pb-0">
-          <h6>Últimas Transacções Mobile — <?= date('d/m/Y') ?></h6>
-        </div>
-        <div class="card-body px-0 pt-0 pb-2">
-          <div class="table-responsive p-0">
-            <table class="table align-items-center mb-0">
-              <thead>
-                <tr>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">MSISDN</th>
-                  <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Operador</th>
-                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Valor</th>
-                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Débito</th>
-                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tipo</th>
-                  <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Estado</th>
-                  <th class="text-secondary opacity-7"></th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php if (empty($recent)): ?>
-                <tr><td colspan="6" class="text-center text-sm py-4 text-muted">Sem transacções hoje.</td></tr>
-                <?php else: ?>
-                <?php foreach ($recent as $t): ?>
-                <tr>
-                  <td class="ps-4">
-                    <p class="text-xs font-weight-bold mb-0"><?= htmlspecialchars($t['msisdn']) ?></p>
-                    <p class="text-xs text-secondary mb-0"><?= date('H:i', strtotime($t['createdAt'])) ?></p>
-                  </td>
-                  <td>
-                    <p class="text-xs text-secondary mb-0"><?= htmlspecialchars($t['prefix']) ?></p>
-                  </td>
-                  <td class="align-middle text-center">
-                    <span class="text-secondary text-xs font-weight-bold"><?= number_format($t['amount'], 2) ?> MT</span>
-                  </td>
-                  <td class="align-middle text-center">
-                    <span class="text-secondary text-xs font-weight-bold"><?= number_format($t['debit'], 2) ?> MT</span>
-                  </td>
-                  <td class="align-middle text-center">
-                    <span class="text-secondary text-xs"><?= htmlspecialchars($t['rechargeType']) ?></span>
-                  </td>
-                  <td class="align-middle text-center text-sm">
-                    <?= $estadoLabel($t['estado']) ?>
-                  </td>
-                </tr>
-                <?php endforeach; ?>
-                <?php endif; ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-<?php include __DIR__ . '/footer/footer.php'; ?>
 </div>
-</main>
-<script src="assets/js/core/popper.min.js"></script>
-<script src="assets/js/core/bootstrap.min.js"></script>
-<script src="assets/js/plugins/perfect-scrollbar.min.js"></script>
-<script src="assets/js/plugins/smooth-scrollbar.min.js"></script>
-<script src="assets/js/soft-ui-dashboard.min.js"></script>
+<!-- /d-flex -->
+
+<!-- Bootstrap 5 JS bundle -->
+<script src="assets/js/bootstrap.bundle.min.js"></script>
+<!-- Custom module -->
+<script src="assets/js/main.js" type="module"></script>
 </body>
 </html>

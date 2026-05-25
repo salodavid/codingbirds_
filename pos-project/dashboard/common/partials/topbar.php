@@ -1,71 +1,36 @@
-<?php
-// topbar.php — included from dashboard-level pages
-// Requires session to already be started and $_SESSION['reseller'] to be set
-$_resellerName  = htmlspecialchars($_SESSION['reseller']['name']  ?? 'Utilizador');
-$_resellerEmail = htmlspecialchars($_SESSION['reseller']['email'] ?? '');
-$_resellerInitial = strtoupper(substr($_SESSION['reseller']['name'] ?? 'U', 0, 1));
-$_currentPage = basename($_SERVER['SCRIPT_FILENAME'], '.php');
-?>
-<nav id="topbar" class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4 py-2 sticky-top">
-  <div class="container-fluid">
-
-    <!-- Mobile sidebar toggle -->
-    <button class="btn btn-link text-dark d-lg-none me-2" type="button"
-            data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas">
-      <i class="ti ti-menu-2 fs-5"></i>
-    </button>
-
-    <!-- Page title / breadcrumb -->
-    <span class="navbar-brand mb-0 h6 text-secondary fw-normal d-none d-sm-inline">
-      <?php
-      $titles = [
-        'main'         => 'Dashboard',
-        'carregamento' => 'Carregamento',
-        'relatorios'   => 'Relatórios',
-      ];
-      echo htmlspecialchars($titles[$_currentPage] ?? ucfirst($_currentPage));
-      ?>
-    </span>
-
-    <div class="ms-auto d-flex align-items-center gap-3">
-
-      <!-- Notification bell (shell only) -->
-      <div class="dropdown">
-        <button class="btn btn-link text-secondary position-relative p-0"
-                id="notifDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="ti ti-bell fs-5"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="notifDropdown" style="min-width:260px">
-          <li><h6 class="dropdown-header">Notificações</h6></li>
-          <li><p class="text-muted text-sm px-3 py-2 mb-0">Sem notificações de momento.</p></li>
-        </ul>
-      </div>
-
-      <!-- User dropdown -->
-      <div class="dropdown">
-        <button class="btn btn-link text-dark d-flex align-items-center gap-2 p-0 text-decoration-none"
-                id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-          <span class="avatar avatar-sm rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold"
-                style="width:34px;height:34px;font-size:.85rem;">
-            <?= $_resellerInitial ?>
+<nav id="topbar" class="navbar bg-white border-bottom fixed-top topbar px-3">
+  <button id="toggleBtn" class="d-none d-lg-inline-flex btn btn-light btn-icon btn-sm">
+    <i class="ti ti-layout-sidebar-left-expand"></i>
+  </button>
+  <button id="mobileBtn" class="btn btn-light btn-icon btn-sm d-lg-none me-2">
+    <i class="ti ti-layout-sidebar-left-expand"></i>
+  </button>
+  <div class="ms-auto">
+    <ul class="list-unstyled d-flex align-items-center mb-0 gap-1">
+      <li class="dropdown">
+        <a href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" class="d-flex align-items-center gap-2 text-dark text-decoration-none">
+          <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width:32px;height:32px;font-size:14px;">
+            <?= strtoupper(substr($_SESSION['reseller']['name'], 0, 1)) ?>
           </span>
-          <span class="d-none d-md-inline text-sm fw-semibold"><?= $_resellerName ?></span>
-          <i class="ti ti-chevron-down text-muted" style="font-size:.75rem;"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userDropdown">
-          <li class="px-3 py-2">
-            <p class="mb-0 fw-semibold text-sm"><?= $_resellerName ?></p>
-            <p class="mb-0 text-muted" style="font-size:.75rem;"><?= $_resellerEmail ?></p>
-          </li>
-          <li><hr class="dropdown-divider my-1"></li>
-          <li>
-            <a class="dropdown-item text-danger d-flex align-items-center gap-2" href="logout.php">
-              <i class="ti ti-logout"></i> Sair
+          <span class="d-none d-md-inline small"><?= htmlspecialchars($_SESSION['reseller']['name']) ?></span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-end p-0" style="min-width:200px;">
+          <div class="d-flex gap-3 align-items-center border-bottom px-3 py-3">
+            <span class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center fw-bold" style="width:40px;height:40px;min-width:40px;font-size:16px;">
+              <?= strtoupper(substr($_SESSION['reseller']['name'], 0, 1)) ?>
+            </span>
+            <div>
+              <h6 class="mb-0 small"><?= htmlspecialchars($_SESSION['reseller']['name']) ?></h6>
+              <p class="mb-0 small text-muted"><?= htmlspecialchars($_SESSION['reseller']['email']) ?></p>
+            </div>
+          </div>
+          <div class="p-2">
+            <a href="logout.php" class="dropdown-item small text-danger">
+              <i class="ti ti-logout me-2"></i>Sair
             </a>
-          </li>
-        </ul>
-      </div>
-
-    </div>
+          </div>
+        </div>
+      </li>
+    </ul>
   </div>
 </nav>
